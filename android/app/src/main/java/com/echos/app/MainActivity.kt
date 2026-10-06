@@ -291,7 +291,7 @@ class MainActivity : AppCompatActivity() {
         etIp.setTextColor(Color.WHITE)
         etIp.setHintTextColor(resources.getColor(R.color.ech_hint, theme))
         etIp.textSize = 15f
-        etIp.singleLine = true
+        etIp.setSingleLine(true)
 
         val etPort = EditText(this)
         etPort.hint = getString(R.string.node_port)
@@ -299,7 +299,7 @@ class MainActivity : AppCompatActivity() {
         etPort.setTextColor(Color.WHITE)
         etPort.setHintTextColor(resources.getColor(R.color.ech_hint, theme))
         etPort.textSize = 15f
-        etPort.singleLine = true
+        etPort.setSingleLine(true)
 
         val etRemark = EditText(this)
         etRemark.hint = getString(R.string.remark_hint)
@@ -307,7 +307,7 @@ class MainActivity : AppCompatActivity() {
         etRemark.setTextColor(Color.WHITE)
         etRemark.setHintTextColor(resources.getColor(R.color.ech_hint, theme))
         etRemark.textSize = 15f
-        etRemark.singleLine = true
+        etRemark.setSingleLine(true)
 
         val lp = LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
