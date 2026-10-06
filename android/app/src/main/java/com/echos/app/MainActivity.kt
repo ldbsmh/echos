@@ -1,23 +1,19 @@
 package com.echos.app
 
 import android.Manifest
-import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.net.VpnService
-import android.app.AlertDialog
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.text.InputType
-import android.view.MotionEvent
 import android.view.View
-import android.view.ViewGroup
-import android.view.ViewConfiguration
 import android.widget.EditText
 import android.widget.LinearLayout
+import android.widget.PopupMenu
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -26,7 +22,6 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
-import kotlin.math.abs
 
 class MainActivity : AppCompatActivity() {
 
@@ -39,8 +34,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var emptyView: View
 
     private val handler = Handler(Looper.getMainLooper())
-    private var openSwipeCard: View? = null
-    private val touchSlop by lazy { ViewConfiguration.get(this).scaledTouchSlop }
 
     private val vpnPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -97,11 +90,13 @@ class MainActivity : AppCompatActivity() {
         emptyView = findViewById(R.id.emptyView)
 
         findViewById<View>(R.id.btnAddCard).setOnClickListener {
+            showAddMenu()
+        }
+        findViewById<View>(R.id.btnAddBottom).setOnClickListener {
             openAddNodeDialog()
         }
-        findViewById<View>(R.id.btnImport).setOnClickListener { importFromClipboard() }
-        findViewById<View>(R.id.btnLogs).setOnClickListener {
-            startActivity(Intent(this, LogActivity::class.java))
+        findViewById<View>(R.id.btnEmptyAdd).setOnClickListener {
+            openAddNodeDialog()
         }
         findViewById<View>(R.id.btnSettings).setOnClickListener {
             startActivity(Intent(this, SettingsActivity::class.java))
@@ -137,29 +132,34 @@ class MainActivity : AppCompatActivity() {
     // ==================== 线路卡片 ====================
 
     private fun rebuildCards() {
-        openSwipeCard = null
         cardsContainer.removeAllViews()
         val cfg = ConfigStore.load(this) ?: ConfigStore.default()
-        if (cfg.cards.isEmpty()) {
-            cardsContainer.visibility = View.GONE
-            emptyView.visibility = View.VISIBLE
-        } else {
-            cardsContainer.visibility = View.VISIBLE
-            emptyView.visibility = View.GONE
+        val hasCards = cfg.cards.isNotEmpty()
+        cardsContainer.visibility = if (hasCards) View.VISIBLE else View.GONE
+        emptyView.visibility = if (hasCards) View.GONE else View.VISIBLE
+        findViewById<View>(R.id.listHeader).visibility =
+            if (hasCards) View.VISIBLE else View.GONE
+        // ProxyCloud 空状态时不显示底部控制区
+        val bottomArea = listOf(
+            findViewById<View>(R.id.statusCard),
+            findViewById<View>(R.id.btnStart),
+            findViewById<View>(R.id.btnStop),
+            findViewById<View>(R.id.btnAddBottom)
+        )
+        bottomArea.forEach { it.visibility = if (hasCards) View.VISIBLE else View.GONE }
+        if (hasCards) {
             cfg.cards.forEachIndexed { i, card -> addCardView(i, card, cfg.activeCard) }
         }
     }
 
-    @SuppressLint("ClickableViewAccessibility")
     private fun addCardView(index: Int, card: ConfigStore.EntryCard, activeIndex: Int) {
         val v = layoutInflater.inflate(R.layout.item_entry_card, cardsContainer, false)
         val cardRoot = v.findViewById<MaterialCardView>(R.id.cardRoot)
+        val cardIcon = v.findViewById<TextView>(R.id.cardIcon)
         val cardTitle = v.findViewById<TextView>(R.id.cardTitle)
         val cardEndpoint = v.findViewById<TextView>(R.id.cardEndpoint)
         val activeTag = v.findViewById<TextView>(R.id.cardActive)
-        val btnEdit = v.findViewById<TextView>(R.id.btnEdit)
-        val btnDelete = v.findViewById<TextView>(R.id.btnDelete)
-        val actionBar = v.findViewById<LinearLayout>(R.id.actionBar)
+        val btnMenu = v.findViewById<TextView>(R.id.btnMenu)
 
         cardTitle.text = card.remark.ifBlank { card.display() }
         cardEndpoint.text = card.display()
@@ -172,115 +172,65 @@ class MainActivity : AppCompatActivity() {
             if (active) resources.getColor(R.color.ech_active_bg, theme)
             else resources.getColor(R.color.ech_card, theme)
         )
+        cardIcon.text = if (active) "●" else "○"
+        cardIcon.setTextColor(
+            if (active) resources.getColor(R.color.ech_green, theme)
+            else resources.getColor(R.color.ech_stroke, theme)
+        )
         activeTag.visibility = if (active) View.VISIBLE else View.GONE
 
         fun indexOfCard() = cardsContainer.indexOfChild(v)
 
-        fun closeAllSwipes() {
-            for (i in 0 until cardsContainer.childCount) {
-                cardsContainer.getChildAt(i)
-                    .findViewById<MaterialCardView>(R.id.cardRoot)
-                    .animate().translationX(0f).setDuration(140).start()
+        // 三点菜单：编辑 / 删除
+        btnMenu.setOnClickListener { menuBtn ->
+            PopupMenu(this, menuBtn).apply {
+                menu.add(getString(R.string.edit_node))
+                menu.add(getString(R.string.delete))
+                setOnMenuItemClickListener { item ->
+                    when (item.title.toString()) {
+                        getString(R.string.edit_node) -> openCardEditor(indexOfCard())
+                        getString(R.string.delete) -> {
+                            if ((ConfigStore.load(this@MainActivity)?.cards?.size ?: 0) <= 1) {
+                                Toast.makeText(
+                                    this@MainActivity, "至少保留一个线路卡片",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            } else {
+                                ConfigStore.removeCard(this@MainActivity, indexOfCard())
+                                rebuildCards()
+                            }
+                        }
+                    }
+                    true
+                }
+                show()
             }
-            openSwipeCard = null
-        }
-
-        btnEdit.setOnClickListener {
-            closeAllSwipes()
-            openCardEditor(indexOfCard())
-        }
-        btnDelete.setOnClickListener {
-            closeAllSwipes()
-            if ((ConfigStore.load(this)?.cards?.size ?: 0) <= 1) {
-                Toast.makeText(this, "至少保留一个线路卡片", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
-            ConfigStore.removeCard(this@MainActivity, indexOfCard())
-            rebuildCards()
         }
 
         // 点卡片本体 = 切换为使用中线路
         cardRoot.setOnClickListener {
-            if (openSwipeCard != null) {
-                closeAllSwipes()
-                return@setOnClickListener
-            }
             val i = indexOfCard()
             ConfigStore.setActive(this@MainActivity, i)
             rebuildCards()
             if (ProxyService.isRunning) ProxyService.restart(this@MainActivity)
         }
 
-        // 左滑 ~1/4 宽度露出「编辑 / 删除」
-        var downX = 0f
-        var downY = 0f
-        var horizontal = false
-        var swiping = false
-        var reveal = 0
-
-        cardRoot.setOnTouchListener { vw, ev ->
-            when (ev.actionMasked) {
-                MotionEvent.ACTION_DOWN -> {
-                    downX = ev.x; downY = ev.y
-                    horizontal = false; swiping = false
-                    reveal = btnEdit.width + btnDelete.width
-                    true
-                }
-                MotionEvent.ACTION_MOVE -> {
-                    val dx = ev.x - downX
-                    val dy = ev.y - downY
-                    if (!horizontal && !swiping) {
-                        if (abs(dx) > touchSlop && abs(dx) > abs(dy)) {
-                            horizontal = true
-                            swiping = true
-                            (vw.parent as? ViewGroup)?.requestDisallowInterceptTouchEvent(true)
-                            // 同时只允许一张卡片处于展开状态
-                            if (openSwipeCard != null && openSwipeCard !== vw) {
-                                openSwipeCard?.findViewById<MaterialCardView>(R.id.cardRoot)
-                                    ?.animate()?.translationX(0f)?.setDuration(120)?.start()
-                                openSwipeCard = null
-                            }
-                        } else if (abs(dy) > touchSlop) {
-                            return@setOnTouchListener false // 交给外层 ScrollView
-                        }
-                    }
-                    if (swiping) {
-                        val base = if (openSwipeCard === vw) -reveal.toFloat() else 0f
-                        vw.translationX = (base + dx).coerceIn(-reveal.toFloat(), 0f)
-                        true
-                    } else false
-                }
-                MotionEvent.ACTION_UP -> {
-                    if (swiping) {
-                        swiping = false
-                        if (vw.translationX < -reveal / 2f) {
-                            openSwipeCard = vw
-                            vw.animate().translationX(-reveal.toFloat()).setDuration(140).start()
-                        } else {
-                            vw.animate().translationX(0f).setDuration(140).start()
-                            if (openSwipeCard === vw) openSwipeCard = null
-                        }
-                        true
-                    } else if (!horizontal) {
-                        vw.performClick()
-                        true
-                    } else false
-                }
-                MotionEvent.ACTION_CANCEL -> {
-                    val wasOpen = openSwipeCard === vw
-                    val target = if (wasOpen || vw.translationX < -reveal / 2f) {
-                        -reveal.toFloat()
-                    } else 0f
-                    vw.animate().translationX(target).setDuration(120).start()
-                    openSwipeCard = if (target < 0f) vw else null
-                    swiping = false; horizontal = false
-                    true
-                }
-                else -> false
-            }
-        }
-
         cardsContainer.addView(v)
+    }
+
+    /** 加号二级页面：手动添加节点 / 从剪贴板导入。 */
+    private fun showAddMenu() {
+        val items = arrayOf(getString(R.string.add_node), getString(R.string.import_clipboard))
+        androidx.appcompat.app.AlertDialog.Builder(this, R.style.Theme_EchOS)
+            .setTitle(getString(R.string.add_menu_title))
+            .setItems(items) { _, which ->
+                when (which) {
+                    0 -> openAddNodeDialog()
+                    1 -> importFromClipboard()
+                }
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
     }
 
     /** ProxyCloud 风格：添加节点对话框（节点地址 / 节点端口 / 备注）。 */
@@ -320,7 +270,7 @@ class MainActivity : AppCompatActivity() {
         form.addView(etPort, lp)
         form.addView(etRemark, lp)
 
-        val dialog = AlertDialog.Builder(this, R.style.Theme_EchOS)
+        val dialog = androidx.appcompat.app.AlertDialog.Builder(this, R.style.Theme_EchOS)
             .setTitle(R.string.add_node)
             .setView(form)
             .setNegativeButton(R.string.cancel, null)

@@ -25,15 +25,6 @@
             android:textStyle="bold" />
 
         <TextView
-            android:id="@+id/btnImport"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:padding="6dp"
-            android:text="📥"
-            android:textSize="18sp" />
-
-        <TextView
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
@@ -42,15 +33,6 @@
             android:textColor="@color/ech_text"
             android:textSize="20sp"
             android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/btnLogs"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:padding="6dp"
-            android:text="📋"
-            android:textSize="17sp" />
 
         <TextView
             android:id="@+id/btnSettings"
@@ -76,8 +58,9 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="🛰"
-            android:textSize="48sp" />
+            android:text="⬡"
+            android:textColor="@color/ech_sub"
+            android:textSize="64sp" />
 
         <TextView
             android:layout_width="wrap_content"
@@ -96,6 +79,13 @@
             android:text="@string/no_nodes_sub"
             android:textColor="@color/ech_sub"
             android:textSize="13sp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnEmptyAdd"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text="@string/add_node" />
     </LinearLayout>
 
     <!-- 节点卡片滚动区 -->
@@ -107,10 +97,41 @@
         android:layout_weight="1">
 
         <LinearLayout
-            android:id="@+id/cardsContainer"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical" />
+            android:orientation="vertical">
+
+            <!-- ProxyCloud 列表 header：ECH 节点 / IP:端口 隧道节点 -->
+            <LinearLayout
+                android:id="@+id/listHeader"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingBottom="12dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/nodes_title"
+                    android:textColor="@color/ech_text"
+                    android:textSize="17sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="@string/nodes_subtitle"
+                    android:textColor="@color/ech_sub"
+                    android:textSize="12sp" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/cardsContainer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical" />
+        </LinearLayout>
     </ScrollView>
 
     <!-- 底部圆角状态卡 -->
@@ -123,11 +144,11 @@
         android:orientation="vertical"
         android:padding="14dp">
 
-        <!-- 状态行：圆点 + 文字 -->
+        <!-- 状态行：圆点 + 文字（居中） -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:gravity="center_vertical"
+            android:gravity="center"
             android:orientation="horizontal">
 
             <View
@@ -153,6 +174,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="6dp"
+            android:gravity="center"
             android:textColor="@color/ech_error"
             android:textSize="12sp"
             android:visibility="gone" />
@@ -173,4 +195,18 @@
         android:layout_marginTop="8dp"
         android:enabled="false"
         android:text="@string/disconnect" />
+
+    <!-- ProxyCloud 风格：+ 添加节点 -->
+    <TextView
+        android:id="@+id/btnAddBottom"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:gravity="center"
+        android:padding="8dp"
+        android:text="@string/add_node"
+        android:textColor="@color/ech_green"
+        android:textSize="14sp"
+        android:textStyle="bold" />
 </LinearLayout>

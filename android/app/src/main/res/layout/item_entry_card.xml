@@ -1,106 +1,91 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/cardRoot"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginBottom="10dp">
+    android:layout_marginBottom="10dp"
+    android:clickable="true"
+    android:focusable="true"
+    app:cardBackgroundColor="@color/ech_card"
+    app:cardCornerRadius="14dp"
+    app:strokeWidth="1dp"
+    app:strokeColor="@color/ech_stroke">
 
-    <!-- 左滑露出的操作按钮（背景层） -->
     <LinearLayout
-        android:id="@+id/actionBar"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:gravity="end|center_vertical"
-        android:orientation="horizontal">
-
-        <TextView
-            android:id="@+id/btnEdit"
-            android:layout_width="78dp"
-            android:layout_height="match_parent"
-            android:background="@drawable/bg_action_edit"
-            android:gravity="center"
-            android:text="@string/edit_node"
-            android:textColor="#FFFFFF"
-            android:textSize="15sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/btnDelete"
-            android:layout_width="78dp"
-            android:layout_height="match_parent"
-            android:background="@drawable/bg_action_delete"
-            android:gravity="center"
-            android:text="@string/delete"
-            android:textColor="#FFFFFF"
-            android:textSize="15sp"
-            android:textStyle="bold" />
-    </LinearLayout>
-
-    <!-- 前景卡片：左滑时整体平移露出按钮 -->
-    <com.google.android.material.card.MaterialCardView
-        android:id="@+id/cardRoot"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:clickable="true"
-        android:focusable="true"
-        app:cardBackgroundColor="@color/ech_card"
-        app:cardCornerRadius="14dp"
-        app:strokeWidth="1dp"
-        app:strokeColor="@color/ech_stroke">
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingHorizontal="16dp"
+        android:paddingVertical="14dp">
 
-        <LinearLayout
-            android:layout_width="match_parent"
+        <!-- 左：状态图标（选中=绿 check / 未选=灰） -->
+        <TextView
+            android:id="@+id/cardIcon"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:gravity="center_vertical"
-            android:orientation="horizontal"
-            android:paddingHorizontal="16dp"
-            android:paddingVertical="14dp">
+            android:layout_marginEnd="12dp"
+            android:text="◎"
+            android:textColor="@color/ech_stroke"
+            android:textSize="20sp" />
 
-            <!-- 左：备注 + IP:端口 -->
-            <LinearLayout
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:orientation="vertical">
+        <!-- 中：备注 + IP:端口 -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
 
-                <TextView
-                    android:id="@+id/cardTitle"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:ellipsize="end"
-                    android:singleLine="true"
-                    android:text="我的节点"
-                    android:textColor="@color/ech_text"
-                    android:textSize="16sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:id="@+id/cardEndpoint"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:ellipsize="end"
-                    android:fontFamily="monospace"
-                    android:singleLine="true"
-                    android:text="23.144.20.184:32292"
-                    android:textColor="@color/ech_sub"
-                    android:textSize="13sp" />
-            </LinearLayout>
-
-            <!-- 右：使用中徽章 -->
             <TextView
-                android:id="@+id/cardActive"
-                android:layout_width="wrap_content"
+                android:id="@+id/cardTitle"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="10dp"
-                android:background="@drawable/bg_active_badge"
-                android:paddingHorizontal="10dp"
-                android:paddingVertical="4dp"
-                android:text="@string/in_use"
-                android:textColor="#FFFFFF"
-                android:textSize="12sp"
-                android:textStyle="bold"
-                android:visibility="gone" />
+                android:ellipsize="end"
+                android:singleLine="true"
+                android:text="我的节点"
+                android:textColor="@color/ech_text"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/cardEndpoint"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:ellipsize="end"
+                android:fontFamily="monospace"
+                android:singleLine="true"
+                android:text="23.144.20.184:32292"
+                android:textColor="@color/ech_sub"
+                android:textSize="13sp" />
         </LinearLayout>
-    </com.google.android.material.card.MaterialCardView>
-</FrameLayout>
+
+        <!-- 使用中徽章 -->
+        <TextView
+            android:id="@+id/cardActive"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="8dp"
+            android:background="@drawable/bg_active_badge"
+            android:paddingHorizontal="10dp"
+            android:paddingVertical="4dp"
+            android:text="@string/in_use"
+            android:textColor="#FFFFFF"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:visibility="gone" />
+
+        <!-- 右：三点菜单 -->
+        <TextView
+            android:id="@+id/btnMenu"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:padding="8dp"
+            android:text="⋮"
+            android:textColor="@color/ech_sub"
+            android:textSize="20sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+</com.google.android.material.card.MaterialCardView>
