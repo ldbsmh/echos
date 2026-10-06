@@ -195,18 +195,4 @@
         android:layout_marginTop="8dp"
         android:enabled="false"
         android:text="@string/disconnect" />
-
-    <!-- ProxyCloud 风格：+ 添加节点 -->
-    <TextView
-        android:id="@+id/btnAddBottom"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="10dp"
-        android:background="?attr/selectableItemBackgroundBorderless"
-        android:gravity="center"
-        android:padding="8dp"
-        android:text="@string/add_node"
-        android:textColor="@color/ech_green"
-        android:textSize="14sp"
-        android:textStyle="bold" />
 </LinearLayout>

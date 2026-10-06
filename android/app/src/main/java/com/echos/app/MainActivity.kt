@@ -92,11 +92,8 @@ class MainActivity : AppCompatActivity() {
         findViewById<View>(R.id.btnAddCard).setOnClickListener {
             showAddMenu()
         }
-        findViewById<View>(R.id.btnAddBottom).setOnClickListener {
-            openAddNodeDialog()
-        }
         findViewById<View>(R.id.btnEmptyAdd).setOnClickListener {
-            openAddNodeDialog()
+            openNodeDialog(null)
         }
         findViewById<View>(R.id.btnSettings).setOnClickListener {
             startActivity(Intent(this, SettingsActivity::class.java))
@@ -143,8 +140,7 @@ class MainActivity : AppCompatActivity() {
         val bottomArea = listOf(
             findViewById<View>(R.id.statusCard),
             findViewById<View>(R.id.btnStart),
-            findViewById<View>(R.id.btnStop),
-            findViewById<View>(R.id.btnAddBottom)
+            findViewById<View>(R.id.btnStop)
         )
         bottomArea.forEach { it.visibility = if (hasCards) View.VISIBLE else View.GONE }
         if (hasCards) {
@@ -188,7 +184,7 @@ class MainActivity : AppCompatActivity() {
                 menu.add(getString(R.string.delete))
                 setOnMenuItemClickListener { item ->
                     when (item.title.toString()) {
-                        getString(R.string.edit_node) -> openCardEditor(indexOfCard())
+                        getString(R.string.edit_node) -> openNodeDialog(indexOfCard())
                         getString(R.string.delete) -> {
                             if ((ConfigStore.load(this@MainActivity)?.cards?.size ?: 0) <= 1) {
                                 Toast.makeText(
@@ -225,7 +221,7 @@ class MainActivity : AppCompatActivity() {
             .setTitle(getString(R.string.add_menu_title))
             .setItems(items) { _, which ->
                 when (which) {
-                    0 -> openAddNodeDialog()
+                    0 -> openNodeDialog(null)
                     1 -> importFromClipboard()
                 }
             }
@@ -233,8 +229,15 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    /** ProxyCloud 风格：添加节点对话框（节点地址 / 节点端口 / 备注）。 */
-    private fun openAddNodeDialog() {
+    /**
+     * 添加/编辑节点对话框（ProxyCloud 风格）。
+     * @param index 非 null = 编辑该节点（预填当前值）；null = 新建。
+     */
+    private fun openNodeDialog(index: Int?) {
+        val editing = index != null
+        val cfg = ConfigStore.load(this) ?: ConfigStore.default()
+        val orig = if (editing && index!! in cfg.cards.indices) cfg.cards[index!!] else null
+
         val etIp = EditText(this)
         etIp.hint = getString(R.string.node_ip)
         etIp.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
@@ -242,6 +245,7 @@ class MainActivity : AppCompatActivity() {
         etIp.setHintTextColor(resources.getColor(R.color.ech_hint, theme))
         etIp.textSize = 15f
         etIp.setSingleLine(true)
+        if (orig != null) etIp.setText(orig.ips)
 
         val etPort = EditText(this)
         etPort.hint = getString(R.string.node_port)
@@ -250,6 +254,7 @@ class MainActivity : AppCompatActivity() {
         etPort.setHintTextColor(resources.getColor(R.color.ech_hint, theme))
         etPort.textSize = 15f
         etPort.setSingleLine(true)
+        if (orig != null) etPort.setText(orig.port.toString())
 
         val etRemark = EditText(this)
         etRemark.hint = getString(R.string.remark_hint)
@@ -258,6 +263,7 @@ class MainActivity : AppCompatActivity() {
         etRemark.setHintTextColor(resources.getColor(R.color.ech_hint, theme))
         etRemark.textSize = 15f
         etRemark.setSingleLine(true)
+        if (orig != null) etRemark.setText(orig.remark)
 
         val lp = LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
@@ -270,8 +276,8 @@ class MainActivity : AppCompatActivity() {
         form.addView(etPort, lp)
         form.addView(etRemark, lp)
 
-        val dialog = androidx.appcompat.app.AlertDialog.Builder(this, R.style.Theme_EchOS)
-            .setTitle(R.string.add_node)
+        androidx.appcompat.app.AlertDialog.Builder(this, R.style.Theme_EchOS)
+            .setTitle(if (editing) R.string.edit_node else R.string.add_node)
             .setView(form)
             .setNegativeButton(R.string.cancel, null)
             .setPositiveButton(R.string.save) { _, _ ->
@@ -287,23 +293,17 @@ class MainActivity : AppCompatActivity() {
                     Toast.makeText(this, getString(R.string.port_invalid), Toast.LENGTH_SHORT).show()
                     return@setPositiveButton
                 }
-                val cfg = ConfigStore.load(this) ?: ConfigStore.default()
-                val cards = cfg.cards.toMutableList()
-                cards.add(ConfigStore.EntryCard(ip, port, remark))
-                ConfigStore.save(this, cfg.copy(cards = cards, activeCard = cfg.activeCard))
+                if (editing && orig != null) {
+                    ConfigStore.updateCard(this, index!!, orig.copy(ips = ip, port = port, remark = remark))
+                } else {
+                    val cards = cfg.cards.toMutableList()
+                    cards.add(ConfigStore.EntryCard(ip, port, remark))
+                    ConfigStore.save(this, cfg.copy(cards = cards, activeCard = cfg.activeCard))
+                }
                 rebuildCards()
             }
-            .create()
-        dialog.show()
+            .show()
     }
-
-    private fun openCardEditor(index: Int) {
-        startActivity(
-            Intent(this, CardEditActivity::class.java).putExtra("index", index)
-        )
-    }
-
-    // ==================== 剪贴板导入 ====================
 
     private fun importFromClipboard() {
         val cm = getSystemService(android.content.ClipboardManager::class.java)

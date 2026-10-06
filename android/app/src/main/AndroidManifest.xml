@@ -31,11 +31,6 @@
             android:label="设置" />
 
         <activity
-            android:name=".CardEditActivity"
-            android:exported="false"
-            android:label="编辑线路" />
-
-        <activity
             android:name=".AppPickerActivity"
             android:exported="false"
             android:label="选择应用" />
