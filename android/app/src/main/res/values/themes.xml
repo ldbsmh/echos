@@ -1,4 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.EchOS" parent="Theme.Material3.DayNight.NoActionBar" />
+    <style name="Theme.EchOS" parent="Theme.Material3.Dark.NoActionBar">
+        <item name="android:windowBackground">@color/ech_bg</item>
+        <item name="android:statusBarColor">@color/ech_topbar</item>
+        <item name="android:navigationBarColor">@color/ech_bg</item>
+        <item name="colorPrimary">@color/ech_green</item>
+        <item name="colorPrimaryVariant">@color/ech_green_bg</item>
+        <item name="colorOnPrimary">@color/ech_bg</item>
+        <item name="android:colorAccent">@color/ech_green</item>
+        <item name="android:textColorPrimary">@color/ech_text</item>
+        <item name="android:textColorSecondary">@color/ech_sub</item>
+        <item name="android:colorBackground">@color/ech_bg</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
 </resources>

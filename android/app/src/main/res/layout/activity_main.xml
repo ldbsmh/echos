@@ -3,9 +3,10 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
+    android:background="@color/ech_bg"
     android:padding="16dp">
 
-    <!-- 顶栏：+ 添加线路 | 标题 | 日志 | 设置 -->
+    <!-- 顶栏：＋ 添加 | 标题 ECH(居中) | ⚙ 设置 -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -19,6 +20,7 @@
             android:background="?attr/selectableItemBackgroundBorderless"
             android:padding="6dp"
             android:text="＋"
+            android:textColor="@color/ech_text"
             android:textSize="24sp"
             android:textStyle="bold" />
 
@@ -36,7 +38,8 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:gravity="center"
-            android:text="@string/app_name"
+            android:text="@string/ech_title"
+            android:textColor="@color/ech_text"
             android:textSize="20sp"
             android:textStyle="bold" />
 
@@ -60,8 +63,44 @@
             android:textSize="18sp" />
     </LinearLayout>
 
-    <!-- 线路卡片滚动区 -->
+    <!-- 空状态视图（无节点时显示） -->
+    <LinearLayout
+        android:id="@+id/emptyView"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="🛰"
+            android:textSize="48sp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/no_nodes"
+            android:textColor="@color/ech_text"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:gravity="center"
+            android:text="@string/no_nodes_sub"
+            android:textColor="@color/ech_sub"
+            android:textSize="13sp" />
+    </LinearLayout>
+
+    <!-- 节点卡片滚动区 -->
     <ScrollView
+        android:id="@+id/cardsScroll"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_marginTop="8dp"
@@ -74,21 +113,57 @@
             android:orientation="vertical" />
     </ScrollView>
 
-    <TextView
-        android:id="@+id/statusView"
+    <!-- 底部圆角状态卡 -->
+    <LinearLayout
+        android:id="@+id/statusCard"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="10dp"
-        android:text="@string/stopped"
-        android:textSize="16sp"
-        android:textStyle="bold" />
+        android:layout_marginTop="12dp"
+        android:background="@drawable/bg_status_card"
+        android:orientation="vertical"
+        android:padding="14dp">
+
+        <!-- 状态行：圆点 + 文字 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <View
+                android:id="@+id/statusDot"
+                android:layout_width="10dp"
+                android:layout_height="10dp"
+                android:background="@drawable/bg_status_dot" />
+
+            <TextView
+                android:id="@+id/statusView"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="10dp"
+                android:text="@string/disconnected"
+                android:textColor="@color/ech_text"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <!-- 错误信息（红色小字，可为空） -->
+        <TextView
+            android:id="@+id/statusError"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:textColor="@color/ech_error"
+            android:textSize="12sp"
+            android:visibility="gone" />
+    </LinearLayout>
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btnStart"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="10dp"
-        android:text="@string/start" />
+        android:layout_marginTop="12dp"
+        android:text="@string/connect" />
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btnStop"
@@ -97,5 +172,5 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
         android:enabled="false"
-        android:text="@string/stop" />
+        android:text="@string/disconnect" />
 </LinearLayout>

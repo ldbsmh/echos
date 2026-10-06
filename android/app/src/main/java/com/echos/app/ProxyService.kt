@@ -27,6 +27,10 @@ class ProxyService : Service() {
         var isServiceRunning = false
             private set
 
+        /** 最近一次启动/运行错误信息（UI 底部状态栏显示）。 */
+        @Volatile
+        var lastError: String? = null
+
         val isRunning: Boolean
             get() = KernelRunner.isRunning
 

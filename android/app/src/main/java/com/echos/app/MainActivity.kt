@@ -6,14 +6,17 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.net.VpnService
+import android.app.AlertDialog
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.text.InputType
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.ViewConfiguration
+import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
@@ -31,6 +34,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnStart: MaterialButton
     private lateinit var btnStop: MaterialButton
     private lateinit var statusView: TextView
+    private lateinit var statusDot: View
+    private lateinit var statusError: TextView
+    private lateinit var emptyView: View
 
     private val handler = Handler(Looper.getMainLooper())
     private var openSwipeCard: View? = null
@@ -49,11 +55,28 @@ class MainActivity : AppCompatActivity() {
         override fun run() {
             val running = ProxyService.isRunning
             val vpn = EchVpnService.isVpnRunning
+            val connected = running || vpn
+            // 状态圆点：绿=运行/VPN，红=断开
+            statusDot.setBackgroundResource(
+                if (connected) R.drawable.bg_status_dot_ok else R.drawable.bg_status_dot
+            )
             statusView.text = when {
-                running && vpn -> "运行中 · VPN 全局接管"
-                running -> "运行中 · 本地代理"
-                vpn -> "仅 VPN（内核未运行）"
-                else -> getString(R.string.stopped)
+                running && vpn -> getString(R.string.connected)
+                running -> getString(R.string.connected)
+                vpn -> getString(R.string.connected)
+                else -> getString(R.string.disconnected)
+            }
+            statusView.setTextColor(
+                if (connected) resources.getColor(R.color.ech_green, theme)
+                else resources.getColor(R.color.ech_text, theme)
+            )
+            // 错误信息（如有）
+            val err = ProxyService.lastError
+            if (err.isNullOrBlank()) {
+                statusError.visibility = View.GONE
+            } else {
+                statusError.text = err
+                statusError.visibility = View.VISIBLE
             }
             btnStart.isEnabled = !running && !vpn
             btnStop.isEnabled = running || vpn
@@ -69,10 +92,12 @@ class MainActivity : AppCompatActivity() {
         btnStart = findViewById(R.id.btnStart)
         btnStop = findViewById(R.id.btnStop)
         statusView = findViewById(R.id.statusView)
+        statusDot = findViewById(R.id.statusDot)
+        statusError = findViewById(R.id.statusError)
+        emptyView = findViewById(R.id.emptyView)
 
         findViewById<View>(R.id.btnAddCard).setOnClickListener {
-            val idx = ConfigStore.addCard(this, ConfigStore.EntryCard("", 443))
-            openCardEditor(idx)
+            openAddNodeDialog()
         }
         findViewById<View>(R.id.btnImport).setOnClickListener { importFromClipboard() }
         findViewById<View>(R.id.btnLogs).setOnClickListener {
@@ -115,24 +140,38 @@ class MainActivity : AppCompatActivity() {
         openSwipeCard = null
         cardsContainer.removeAllViews()
         val cfg = ConfigStore.load(this) ?: ConfigStore.default()
-        cfg.cards.forEachIndexed { i, card -> addCardView(i, card, cfg.activeCard) }
+        if (cfg.cards.isEmpty()) {
+            cardsContainer.visibility = View.GONE
+            emptyView.visibility = View.VISIBLE
+        } else {
+            cardsContainer.visibility = View.VISIBLE
+            emptyView.visibility = View.GONE
+            cfg.cards.forEachIndexed { i, card -> addCardView(i, card, cfg.activeCard) }
+        }
     }
 
     @SuppressLint("ClickableViewAccessibility")
     private fun addCardView(index: Int, card: ConfigStore.EntryCard, activeIndex: Int) {
         val v = layoutInflater.inflate(R.layout.item_entry_card, cardsContainer, false)
         val cardRoot = v.findViewById<MaterialCardView>(R.id.cardRoot)
-        val rowText = v.findViewById<TextView>(R.id.cardText)
+        val cardTitle = v.findViewById<TextView>(R.id.cardTitle)
+        val cardEndpoint = v.findViewById<TextView>(R.id.cardEndpoint)
         val activeTag = v.findViewById<TextView>(R.id.cardActive)
         val btnEdit = v.findViewById<TextView>(R.id.btnEdit)
         val btnDelete = v.findViewById<TextView>(R.id.btnDelete)
         val actionBar = v.findViewById<LinearLayout>(R.id.actionBar)
 
-        rowText.text = card.display()
+        cardTitle.text = card.remark.ifBlank { card.display() }
+        cardEndpoint.text = card.display()
         val active = index == activeIndex
         cardRoot.strokeWidth = if (active) 3 else 1
         cardRoot.strokeColor =
-            if (active) Color.parseColor("#0B57D0") else Color.parseColor("#E0E0E0")
+            if (active) resources.getColor(R.color.ech_green, theme)
+            else resources.getColor(R.color.ech_stroke, theme)
+        cardRoot.setCardBackgroundColor(
+            if (active) resources.getColor(R.color.ech_active_bg, theme)
+            else resources.getColor(R.color.ech_card, theme)
+        )
         activeTag.visibility = if (active) View.VISIBLE else View.GONE
 
         fun indexOfCard() = cardsContainer.indexOfChild(v)
@@ -242,6 +281,70 @@ class MainActivity : AppCompatActivity() {
         }
 
         cardsContainer.addView(v)
+    }
+
+    /** ProxyCloud 风格：添加节点对话框（节点地址 / 节点端口 / 备注）。 */
+    private fun openAddNodeDialog() {
+        val etIp = EditText(this)
+        etIp.hint = getString(R.string.node_ip)
+        etIp.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
+        etIp.setTextColor(Color.WHITE)
+        etIp.setHintTextColor(resources.getColor(R.color.ech_hint, theme))
+        etIp.textSize = 15f
+        etIp.singleLine = true
+
+        val etPort = EditText(this)
+        etPort.hint = getString(R.string.node_port)
+        etPort.inputType = InputType.TYPE_CLASS_NUMBER
+        etPort.setTextColor(Color.WHITE)
+        etPort.setHintTextColor(resources.getColor(R.color.ech_hint, theme))
+        etPort.textSize = 15f
+        etPort.singleLine = true
+
+        val etRemark = EditText(this)
+        etRemark.hint = getString(R.string.remark_hint)
+        etRemark.inputType = InputType.TYPE_CLASS_TEXT
+        etRemark.setTextColor(Color.WHITE)
+        etRemark.setHintTextColor(resources.getColor(R.color.ech_hint, theme))
+        etRemark.textSize = 15f
+        etRemark.singleLine = true
+
+        val lp = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT
+        )
+        lp.setMargins(24, 8, 24, 0)
+        val form = LinearLayout(this)
+        form.orientation = LinearLayout.VERTICAL
+        form.addView(etIp, lp)
+        form.addView(etPort, lp)
+        form.addView(etRemark, lp)
+
+        val dialog = AlertDialog.Builder(this, R.style.Theme_EchOS)
+            .setTitle(R.string.add_node)
+            .setView(form)
+            .setNegativeButton(R.string.cancel, null)
+            .setPositiveButton(R.string.save) { _, _ ->
+                val ip = etIp.text.toString().trim()
+                val portStr = etPort.text.toString().trim()
+                val remark = etRemark.text.toString().trim()
+                if (ip.isEmpty()) {
+                    Toast.makeText(this, getString(R.string.ip_required), Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
+                }
+                val port = portStr.toIntOrNull()
+                if (port == null || port !in 1..65535) {
+                    Toast.makeText(this, getString(R.string.port_invalid), Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
+                }
+                val cfg = ConfigStore.load(this) ?: ConfigStore.default()
+                val cards = cfg.cards.toMutableList()
+                cards.add(ConfigStore.EntryCard(ip, port, remark))
+                ConfigStore.save(this, cfg.copy(cards = cards, activeCard = cfg.activeCard))
+                rebuildCards()
+            }
+            .create()
+        dialog.show()
     }
 
     private fun openCardEditor(index: Int) {

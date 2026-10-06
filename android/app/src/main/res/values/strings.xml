@@ -17,4 +17,28 @@
     <string name="running">运行中</string>
     <string name="stopped">已停止</string>
     <string name="hint_addr">例如 myworker.example.workers.dev:443（不带 https://）</string>
+
+    <!-- ProxyCloud ech 风格界面 -->
+    <string name="ech_title">ECH</string>
+    <string name="settings">设置</string>
+    <string name="add_node">添加节点</string>
+    <string name="edit_node">编辑节点</string>
+    <string name="node_ip">节点地址</string>
+    <string name="node_port">节点端口</string>
+    <string name="node_remark">备注</string>
+    <string name="remark_hint">备注（可选）</string>
+    <string name="ip_required">请输入节点地址</string>
+    <string name="port_invalid">端口无效（1-65535）</string>
+    <string name="in_use">使用中</string>
+    <string name="no_nodes">还没有节点</string>
+    <string name="no_nodes_sub">点击右上角 + 或下方按钮添加你的 Worker 节点</string>
+    <string name="connected">已连接</string>
+    <string name="connecting">连接中…</string>
+    <string name="disconnected">未连接</string>
+    <string name="connect">连接</string>
+    <string name="disconnect">断开</string>
+    <string name="delete">删除</string>
+    <string name="cancel">取消</string>
+    <string name="save">保存</string>
+    <string name="delete_confirm">确定删除该节点？</string>
 </resources>

@@ -28,7 +28,8 @@ class CardEditActivity : AppCompatActivity() {
         findViewById<MaterialButton>(R.id.btnSaveCard).setOnClickListener {
             val newCard = ConfigStore.EntryCard(
                 ips = editIps.text?.toString()?.trim() ?: "",
-                port = editPort.text?.toString()?.toIntOrNull() ?: 443
+                port = editPort.text?.toString()?.toIntOrNull() ?: 443,
+                remark = card.remark
             )
             if (newCard.port !in 1..65535) {
                 Toast.makeText(this, "端口无效", Toast.LENGTH_SHORT).show()

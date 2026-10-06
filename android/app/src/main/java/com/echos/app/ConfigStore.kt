@@ -8,10 +8,11 @@ import org.json.JSONObject
 object ConfigStore {
     private const val FILE = "server_config.json"
 
-    /** 一条线路：优选IP(域名) + 服务端口。 */
+    /** 一条线路：优选IP(域名) + 服务端口 + 备注（可选）。 */
     data class EntryCard(
         val ips: String,   // 优选 IP（域名），可空（走域名解析）
-        val port: Int      // 服务端口
+        val port: Int,     // 服务端口
+        val remark: String = ""  // 备注，列表标题用
     ) {
         fun display(): String = "${ips.ifBlank { "默认解析" }}:$port"
     }
@@ -69,10 +70,10 @@ object ConfigStore {
         if (arr != null && arr.length() > 0) {
             for (i in 0 until arr.length()) {
                 val c = arr.getJSONObject(i)
-                cards.add(EntryCard(c.optString("ips", ""), c.optInt("port", 443)))
+                cards.add(EntryCard(c.optString("ips", ""), c.optInt("port", 443), c.optString("remark", "")))
             }
         } else {
-            cards.add(EntryCard(o.optString("ips", ""), legacyPort))
+            cards.add(EntryCard(o.optString("ips", ""), legacyPort, o.optString("remark", "")))
         }
 
         val appList = mutableListOf<String>()
@@ -107,7 +108,7 @@ object ConfigStore {
         o.put("vpn", s.vpn)
         val cardsArr = JSONArray()
         s.cards.forEach { c ->
-            cardsArr.put(JSONObject().put("ips", c.ips).put("port", c.port))
+            cardsArr.put(JSONObject().put("ips", c.ips).put("port", c.port).put("remark", c.remark))
         }
         o.put("cards", cardsArr)
         o.put("activeCard", s.activeCard)
