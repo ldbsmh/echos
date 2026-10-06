@@ -23,7 +23,6 @@
     <string name="settings">设置</string>
     <string name="add_node">添加节点</string>
     <string name="edit_node">编辑节点</string>
-    <string name="add_menu_title">添加</string>
     <string name="import_clipboard">从剪贴板导入</string>
     <string name="nodes_title">ECH 节点</string>
     <string name="nodes_subtitle">IP:端口 隧道节点</string>

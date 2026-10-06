@@ -184,7 +184,8 @@ class MainActivity : AppCompatActivity() {
                 menu.add(getString(R.string.delete))
                 setOnMenuItemClickListener { item ->
                     when (item.title.toString()) {
-                        getString(R.string.edit_node) -> openNodeDialog(indexOfCard())
+                        getString(R.string.edit_node) ->
+                            handler.postDelayed({ openNodeDialog(indexOfCard()) }, 180L)
                         getString(R.string.delete) -> {
                             if ((ConfigStore.load(this@MainActivity)?.cards?.size ?: 0) <= 1) {
                                 Toast.makeText(
@@ -216,17 +217,19 @@ class MainActivity : AppCompatActivity() {
 
     /** 加号二级页面：手动添加节点 / 从剪贴板导入。 */
     private fun showAddMenu() {
-        val items = arrayOf(getString(R.string.add_node), getString(R.string.import_clipboard))
-        androidx.appcompat.app.AlertDialog.Builder(this, R.style.Theme_EchOS)
-            .setTitle(getString(R.string.add_menu_title))
-            .setItems(items) { _, which ->
-                when (which) {
-                    0 -> openNodeDialog(null)
-                    1 -> importFromClipboard()
+        val anchor = findViewById<View>(R.id.btnAddCard)
+        PopupMenu(this, anchor).apply {
+            menu.add(0, 1, 0, getString(R.string.add_node))
+            menu.add(0, 2, 0, getString(R.string.import_clipboard))
+            setOnMenuItemClickListener { item ->
+                when (item.itemId) {
+                    1 -> handler.postDelayed({ openNodeDialog(null) }, 180L)
+                    2 -> handler.postDelayed({ importFromClipboard() }, 180L)
                 }
+                true
             }
-            .setNegativeButton(R.string.cancel, null)
-            .show()
+            show()
+        }
     }
 
     /**
