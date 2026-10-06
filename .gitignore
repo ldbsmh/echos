@@ -1,0 +1,24 @@
+# Build output
+build/
+
+# 内核编译产物（直接 go build 会落在 core/）
+core/x-tunnel
+core/x-tunnel-*
+core/*.test
+
+# 用户配置与日志（运行时生成）
+config.json
+logs/
+*.log
+
+# 用户私有凭据文件
+配置.txt
+
+# Android 构建
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/app/release.keystore
+android/*.jks
+android/app/src/main/jniLibs/

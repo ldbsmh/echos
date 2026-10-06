@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">EchOS</string>
+    <string name="notif_channel">代理运行状态</string>
+    <string name="notif_title">EchOS 代理运行中</string>
+    <string name="notif_text">本地 SOCKS5/HTTP 代理已启动</string>
+    <string name="server_addr">服务器地址（域名:端口）</string>
+    <string name="local_port">本地代理端口</string>
+    <string name="ech_doh">ECH DOH 服务器</string>
+    <string name="ech_domain">ECH 公钥查询域名</string>
+    <string name="preferred_ips">优选 IP（逗号分隔）</string>
+    <string name="token">身份令牌</string>
+    <string name="mode_global">全局模式（所有流量走代理）</string>
+    <string name="mode_rule">规则分流（需 geo 数据）</string>
+    <string name="start">启动代理</string>
+    <string name="stop">停止代理</string>
+    <string name="running">运行中</string>
+    <string name="stopped">已停止</string>
+    <string name="hint_addr">例如 myworker.example.workers.dev:443（不带 https://）</string>
+</resources>

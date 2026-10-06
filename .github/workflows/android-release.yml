@@ -1,0 +1,140 @@
+name: Android Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '版本号，例如 1.0.0（留空则用 build.gradle 里的默认值）'
+        required: false
+        default: '1.0.0'
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 'stable'
+          cache-dependency-path: core/go.sum
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Resolve version
+        id: ver
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            # 打 v 标签：正式发布
+            TAG="${GITHUB_REF#refs/tags/}"
+            VER="${TAG#v}"
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="v${{ github.event.inputs.version }}"
+            VER="${{ github.event.inputs.version }}"
+          else
+            # 分支推送：仅出测试包，不发 Release
+            TAG=""
+            VER="dev.${{ github.run_number }}"
+          fi
+          echo "TAG=$TAG" >> "$GITHUB_OUTPUT"
+          echo "VER=$VER" >> "$GITHUB_OUTPUT"
+          echo "Building version: $VER"
+
+      - name: Build Go kernel for Android
+        # Android 只有 arm64 支持纯 Go 内部链接（CGO_ENABLED=0 交叉编译无需 NDK）；
+        # arm/x86_64 需要 NDK，这里不做（真实设备基本都是 arm64）。
+        run: |
+          set -e
+          cd core
+          mkdir -p ../android/app/src/main/jniLibs/arm64-v8a
+          TMPDIR="${{ runner.temp }}" CGO_ENABLED=0 GOOS=android GOARCH=arm64 \
+            go build -trimpath -ldflags "-s -w" \
+            -o ../android/app/src/main/jniLibs/arm64-v8a/libxtun.so .
+          ls -la ../android/app/src/main/jniLibs/arm64-v8a/
+
+      - name: Build hev-socks5-tunnel (VPN JNI)
+        run: |
+          set -e
+          git clone --depth 1 --branch 2.17.1 https://github.com/heiher/hev-socks5-tunnel
+          cd hev-socks5-tunnel
+          git submodule update --init --depth 1
+          NDK_DIR=$(ls -d ${ANDROID_HOME:-/usr/local/lib/android/sdk}/ndk/* 2>/dev/null | tail -1)
+          echo "NDK: $NDK_DIR"
+          "$NDK_DIR/ndk-build" -j4 \
+            NDK_PROJECT_PATH="$PWD" \
+            APP_BUILD_SCRIPT="$PWD/Android.mk" \
+            NDK_APPLICATION_MK="$PWD/Application.mk" \
+            APP_ABI=arm64-v8a
+          cp libs/arm64-v8a/libhev-socks5-tunnel.so \
+             ../android/app/src/main/jniLibs/arm64-v8a/
+          ls -la ../android/app/src/main/jniLibs/arm64-v8a/
+
+      - name: Generate debug signing key
+        run: |
+          KS=android/app/release.keystore
+          if [ ! -f "$KS" ]; then
+            keytool -genkeypair -v \
+              -keystore "$KS" -storepass echos-android -keypass echos-android \
+              -alias echos -keyalg RSA -keysize 2048 -validity 10000 \
+              -dname "CN=EchOS, OU=EchOS, O=EchOS, L=Internet, S=Internet, C=CN"
+          fi
+          echo "STORE_FILE=$PWD/$KS" >> "$GITHUB_ENV"
+          echo "STORE_PASS=echos-android" >> "$GITHUB_ENV"
+
+      - name: Build APK
+        env:
+          VERSION: ${{ steps.ver.outputs.VER }}
+        run: |
+          gradle -p android assembleRelease --no-daemon \
+            -PRELEASE_STORE_FILE="$STORE_FILE" \
+            -PRELEASE_STORE_PASSWORD="$STORE_PASS" \
+            -PRELEASE_KEY_ALIAS=echos \
+            -PRELEASE_KEY_PASSWORD="$STORE_PASS" \
+            -PVERSION_NAME="$VERSION" \
+            -PVERSION_CODE="${{ github.run_number }}"
+
+      - name: Rename APK
+        env:
+          VER: ${{ steps.ver.outputs.VER }}
+        run: |
+          mkdir -p dist
+          cp android/app/build/outputs/apk/release/app-release.apk \
+             "dist/EchOS-android-$VER.apk"
+          ls -la dist/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: EchOS-android-apk
+          path: dist/*.apk
+
+      - name: Create release & upload APK
+        if: steps.ver.outputs.TAG != ''
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.ver.outputs.TAG }}
+          name: EchOS ${{ steps.ver.outputs.TAG }}
+          files: dist/*.apk
+          body: |
+            EchOS Android 客户端，基于 ECH 的加密代理。
+
+            - 下载 `EchOS-android-*.apk` 直接安装
+            - 需配合 Cloudflare Worker 服务端（见 README）

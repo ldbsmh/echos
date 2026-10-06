@@ -1,0 +1,66 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+}
+
+android {
+    namespace 'com.echos.app'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.echos.app"
+        minSdk 26
+        targetSdk 34
+        // CI 通过 -PVERSION_NAME / -PVERSION_CODE 覆盖（= 赋值写法，避免 Groovy 解析歧义）
+        versionName = (project.findProperty('VERSION_NAME') ?: "1.0.0").toString()
+        versionCode = (project.findProperty('VERSION_CODE') ?: "1").toString().toInteger()
+        ndk {
+            abiFilters += ["arm64-v8a"]
+        }
+    }
+
+    signingConfigs {
+        if (project.hasProperty('RELEASE_STORE_FILE')) {
+            release {
+                storeFile file(RELEASE_STORE_FILE)
+                storePassword project.findProperty('RELEASE_STORE_PASSWORD')
+                keyAlias project.findProperty('RELEASE_KEY_ALIAS')
+                keyPassword project.findProperty('RELEASE_KEY_PASSWORD')
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            if (project.hasProperty('RELEASE_STORE_FILE')) {
+                signingConfig signingConfigs.release
+            }
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+    buildFeatures {
+        viewBinding true
+    }
+    // 关键：强制把 jniLibs 解包到 nativeLibraryDir，Go 内核才能以子进程方式执行
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
+        }
+    }
+}
+
+dependencies {
+    implementation 'androidx.core:core-ktx:1.13.1'
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'com.google.android.material:material:1.12.0'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    implementation 'androidx.recyclerview:recyclerview:1.3.2'
+}

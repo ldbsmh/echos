@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 与 macOS 版 gui/Sources/Config.swift EchPresets 保持一致 -->
+    <string-array name="doh_presets">
+        <item>阿里 DoH IP 直连（推荐，免解析）|https://223.5.5.5/dns-query</item>
+        <item>阿里 DoH（国内推荐）|dns.alidns.com/dns-query</item>
+        <item>腾讯国密 DoH（国内）|sm2.doh.pub/dns-query</item>
+        <item>360 DoH（国内）|doh.360.cn/dns-query</item>
+        <item>OneDNS DoH（国内）|doh.onedns.net/dns-query</item>
+        <item>OpenDNS（境外）|udp://208.67.220.220:443</item>
+        <item>Quad9（境外）|udp://149.112.112.112:9953</item>
+        <item>NextDNS（境外）|udp://45.90.28.0:5353</item>
+        <item>Tiarap（境外）|udp://188.166.206.224:5003</item>
+        <item>Applied Privacy DoH（境外）|doh.applied-privacy.net/query</item>
+        <item>CZ.NIC DoH（境外）|odvr.nic.cz/doh</item>
+    </string-array>
+
+    <string-array name="ech_domain_presets">
+        <item>cloudflare-ech.com（推荐）|cloudflare-ech.com</item>
+        <item>crypto.cloudflare.com|crypto.cloudflare.com</item>
+        <item>encryptedsni.com|encryptedsni.com</item>
+        <item>icook.hk|icook.hk</item>
+        <item>cm.edu.kg|cm.edu.kg</item>
+        <item>godotengine.org|godotengine.org</item>
+        <item>www.britannica.com|www.britannica.com</item>
+        <item>www.prometheus.io|www.prometheus.io</item>
+        <item>www.kyocera.com|www.kyocera.com</item>
+        <item>celestia.org|celestia.org</item>
+        <item>lido.fi|lido.fi</item>
+    </string-array>
+</resources>
