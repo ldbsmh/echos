@@ -12,5 +12,13 @@
         <item name="android:textColorSecondary">@color/ech_sub</item>
         <item name="android:colorBackground">@color/ech_bg</item>
         <item name="android:windowLightStatusBar">false</item>
+        <item name="android:dialogTheme">@style/Theme.EchOS.Dialog</item>
+    </style>
+
+    <!-- 对话框主题：深色 + 入场/退场动画 -->
+    <style name="Theme.EchOS.Dialog" parent="Theme.Material3.Dark.Dialog.Alert">
+        <item name="android:windowEnterAnimation">@anim/ech_dialog_enter</item>
+        <item name="android:windowExitAnimation">@anim/ech_dialog_exit</item>
+        <item name="android:colorAccent">@color/ech_green</item>
     </style>
 </resources>

@@ -185,7 +185,7 @@ class MainActivity : AppCompatActivity() {
                 setOnMenuItemClickListener { item ->
                     when (item.title.toString()) {
                         getString(R.string.edit_node) ->
-                            handler.postDelayed({ openNodeDialog(indexOfCard()) }, 180L)
+                            handler.postDelayed({ openNodeDialog(indexOfCard()) }, 90L)
                         getString(R.string.delete) -> {
                             if ((ConfigStore.load(this@MainActivity)?.cards?.size ?: 0) <= 1) {
                                 Toast.makeText(
@@ -223,8 +223,8 @@ class MainActivity : AppCompatActivity() {
             menu.add(0, 2, 0, getString(R.string.import_clipboard))
             setOnMenuItemClickListener { item ->
                 when (item.itemId) {
-                    1 -> handler.postDelayed({ openNodeDialog(null) }, 180L)
-                    2 -> handler.postDelayed({ importFromClipboard() }, 180L)
+                    1 -> handler.postDelayed({ openNodeDialog(null) }, 90L)
+                    2 -> handler.postDelayed({ importFromClipboard() }, 90L)
                 }
                 true
             }
