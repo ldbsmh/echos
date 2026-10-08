@@ -279,7 +279,7 @@ class MainActivity : AppCompatActivity() {
         form.addView(etPort, lp)
         form.addView(etRemark, lp)
 
-        androidx.appcompat.app.AlertDialog.Builder(this, R.style.Theme_EchOS)
+        androidx.appcompat.app.AlertDialog.Builder(this)
             .setTitle(if (editing) R.string.edit_node else R.string.add_node)
             .setView(form)
             .setNegativeButton(R.string.cancel, null)
