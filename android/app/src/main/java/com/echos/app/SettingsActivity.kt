@@ -106,7 +106,8 @@ class SettingsActivity : AppCompatActivity() {
                 appMode = if (switchAppFilter.isChecked) {
                     if (rbExclude.isChecked) "exclude" else "allow"
                 } else "off",
-                appList = old?.appList ?: emptyList()
+                appList = old?.appList ?: emptyList(),
+                sortByLatency = old?.sortByLatency ?: false
             )
             try {
                 ConfigStore.save(this, s)

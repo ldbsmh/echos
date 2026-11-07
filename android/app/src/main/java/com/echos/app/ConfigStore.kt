@@ -28,7 +28,8 @@ object ConfigStore {
         val cards: List<EntryCard>,
         val activeCard: Int,     // 当前使用线路下标
         val appMode: String,     // off=不分应用 allow=仅选中走代理 exclude=选中不走代理
-        val appList: List<String> // 分应用代理的应用包名列表
+        val appList: List<String>, // 分应用代理的应用包名列表
+        val sortByLatency: Boolean = false // 列表是否按测试延迟排序（低的在上）
     ) {
         val active: EntryCard?
             get() = cards.getOrNull(activeCard)
@@ -93,7 +94,8 @@ object ConfigStore {
             cards = cards,
             activeCard = o.optInt("activeCard", 0),
             appMode = o.optString("appMode", "off"),
-            appList = appList
+            appList = appList,
+            sortByLatency = o.optBoolean("sortByLatency", false)
         )
     }
 
@@ -113,6 +115,7 @@ object ConfigStore {
         o.put("cards", cardsArr)
         o.put("activeCard", s.activeCard)
         o.put("appMode", s.appMode)
+        o.put("sortByLatency", s.sortByLatency)
         val appArr = JSONArray()
         s.appList.forEach { appArr.put(it) }
         o.put("appList", appArr)
@@ -160,6 +163,11 @@ object ConfigStore {
     /** 更新分应用代理设置（mode 传 null 表示保持不变）。 */
     fun setAppFilter(ctx: Context, mode: String?, list: List<String>?) = mutate(ctx) { s ->
         s.copy(appMode = mode ?: s.appMode, appList = list ?: s.appList)
+    }
+
+    /** 切换「按延迟排序」开关（只影响列表显示，不改线路本身的顺序）。 */
+    fun setSortByLatency(ctx: Context, on: Boolean) = mutate(ctx) { s ->
+        s.copy(sortByLatency = on)
     }
 
     /** 生成内核命令行参数（不含二进制路径），配置非法返回 null。 */
@@ -225,6 +233,6 @@ object ConfigStore {
         listenAddr = "127.0.0.1", listenPort = 30000,
         vpn = true,
         cards = listOf(EntryCard("", 443)), activeCard = 0,
-        appMode = "off", appList = emptyList()
+        appMode = "off", appList = emptyList(), sortByLatency = false
     )
 }

@@ -133,6 +133,21 @@
                         android:textSize="12sp" />
                 </LinearLayout>
 
+                <!-- 按延迟排序开关（开=绿的，低的排上面） -->
+                <TextView
+                    android:id="@+id/btnSort"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:paddingHorizontal="8dp"
+                    android:paddingVertical="6dp"
+                    android:text="@string/sort_latency"
+                    android:textColor="@color/ech_sub"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
+
                 <!-- 全部测速：逐条跑真实链路，结果显示在卡片右侧 -->
                 <TextView
                     android:id="@+id/btnTestAll"

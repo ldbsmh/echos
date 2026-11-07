@@ -104,6 +104,7 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(this, SettingsActivity::class.java))
         }
         findViewById<TextView>(R.id.btnTestAll).setOnClickListener { testAll() }
+        findViewById<TextView>(R.id.btnSort).setOnClickListener { toggleSort() }
 
         btnStart.setOnClickListener { onStartClicked() }
         btnStop.setOnClickListener {
@@ -135,6 +136,9 @@ class MainActivity : AppCompatActivity() {
     // ==================== 线路卡片 ====================
 
     private fun rebuildCards() {
+        // 排序/测速完成都会重建视图，先把滚动位置记下来，重建后还原，免得列表跳回顶部
+        val scroll = findViewById<android.widget.ScrollView>(R.id.cardsScroll)
+        val scrollY = scroll.scrollY
         cardsContainer.removeAllViews()
         delayBadges.clear() // 视图重建，旧引用作废；结果本身留着，重建后照常显示
         val cfg = ConfigStore.load(this) ?: ConfigStore.default()
@@ -143,6 +147,13 @@ class MainActivity : AppCompatActivity() {
         emptyView.visibility = if (hasCards) View.GONE else View.VISIBLE
         findViewById<View>(R.id.listHeader).visibility =
             if (hasCards) View.VISIBLE else View.GONE
+        // 排序开关的颜色就是开关状态本身（开=绿）
+        findViewById<TextView>(R.id.btnSort).setTextColor(
+            ContextCompat.getColor(
+                this,
+                if (cfg.sortByLatency) R.color.ech_green else R.color.ech_sub
+            )
+        )
         // ProxyCloud 空状态时不显示底部控制区
         val bottomArea = listOf(
             findViewById<View>(R.id.statusCard),
@@ -151,8 +162,33 @@ class MainActivity : AppCompatActivity() {
         )
         bottomArea.forEach { it.visibility = if (hasCards) View.VISIBLE else View.GONE }
         if (hasCards) {
-            cfg.cards.forEachIndexed { i, card -> addCardView(i, card, cfg.activeCard) }
+            // 注意：这里的 index 始终是「配置里的真实下标」，排序只改显示顺序，
+            // 切换/编辑/删除都还按真实下标走，不会因为排序而改错线路。
+            displayOrder(cfg).forEach { (i, card) -> addCardView(i, card, cfg.activeCard) }
         }
+        scroll.post { scroll.scrollTo(0, scrollY) }
+    }
+
+    /**
+     * 显示顺序：默认就是配置顺序；开了「按延迟排序」后
+     * 通且快的在前 → 通了但慢的 → 没连通的 → 没测过的垫底，同级保持原顺序。
+     * sortedWith 是稳定排序，所以同延迟的线路不会乱跳。
+     */
+    private fun displayOrder(
+        cfg: ConfigStore.Server
+    ): List<Pair<Int, ConfigStore.EntryCard>> {
+        val indexed = cfg.cards.mapIndexed { i, c -> i to c }
+        if (!cfg.sortByLatency) return indexed
+
+        fun result(card: ConfigStore.EntryCard) = testResults[NodeTester.key(card)]
+        fun rank(card: ConfigStore.EntryCard) = when {
+            result(card)?.ok == true -> 0   // 真通了
+            result(card) != null -> 1       // 测过但不通 / 仅握手
+            else -> 2                       // 还没测
+        }
+        fun latency(card: ConfigStore.EntryCard) = result(card)?.ms ?: Long.MAX_VALUE
+
+        return indexed.sortedWith(compareBy({ rank(it.second) }, { latency(it.second) }))
     }
 
     private fun addCardView(index: Int, card: ConfigStore.EntryCard, activeIndex: Int) {
@@ -183,13 +219,11 @@ class MainActivity : AppCompatActivity() {
         )
         activeTag.visibility = if (active) View.VISIBLE else View.GONE
 
-        fun indexOfCard() = cardsContainer.indexOfChild(v)
-
         // 延迟徽章：点一下重新测试，长按看详情
         val key = NodeTester.key(card)
         delayBadges[key] = cardDelay
         renderDelay(key)
-        cardDelay.setOnClickListener { testNode(indexOfCard()) }
+        cardDelay.setOnClickListener { testNode(index) }
         cardDelay.setOnLongClickListener {
             showTestDetail(key)
             true
@@ -204,9 +238,9 @@ class MainActivity : AppCompatActivity() {
                 setOnMenuItemClickListener { item ->
                     when (item.title.toString()) {
                         getString(R.string.test_latency) ->
-                            handler.postDelayed({ testNode(indexOfCard()) }, 90L)
+                            handler.postDelayed({ testNode(index) }, 90L)
                         getString(R.string.edit_node) ->
-                            handler.postDelayed({ openNodeDialog(indexOfCard()) }, 90L)
+                            handler.postDelayed({ openNodeDialog(index) }, 90L)
                         getString(R.string.delete) -> {
                             if ((ConfigStore.load(this@MainActivity)?.cards?.size ?: 0) <= 1) {
                                 Toast.makeText(
@@ -214,7 +248,7 @@ class MainActivity : AppCompatActivity() {
                                     Toast.LENGTH_SHORT
                                 ).show()
                             } else {
-                                ConfigStore.removeCard(this@MainActivity, indexOfCard())
+                                ConfigStore.removeCard(this@MainActivity, index)
                                 rebuildCards()
                             }
                         }
@@ -227,8 +261,7 @@ class MainActivity : AppCompatActivity() {
 
         // 点卡片本体 = 切换为使用中线路
         cardRoot.setOnClickListener {
-            val i = indexOfCard()
-            ConfigStore.setActive(this@MainActivity, i)
+            ConfigStore.setActive(this@MainActivity, index)
             rebuildCards()
             if (ProxyService.isRunning) ProxyService.restart(this@MainActivity)
         }
@@ -263,6 +296,13 @@ class MainActivity : AppCompatActivity() {
                     Toast.LENGTH_SHORT
                 ).show()
             }
+            // 排序模式下，一轮测试全部结束再重排一次：
+            // 中途每条都重排会让列表边测边跳，看着很晕，滚动位置也保不住。
+            if (testingKeys.isEmpty() && ConfigStore.load(this)?.sortByLatency == true) {
+                handler.postDelayed({
+                    if (!isFinishing && !isDestroyed) rebuildCards()
+                }, 300L)
+            }
         }
     }
 
@@ -272,6 +312,24 @@ class MainActivity : AppCompatActivity() {
         if (cfg.cards.isEmpty()) return
         cfg.cards.indices.forEach { testNode(it, toast = false) }
         Toast.makeText(this, "开始测试 ${cfg.cards.size} 条线路", Toast.LENGTH_SHORT).show()
+    }
+
+    /** 切换「按延迟排序」。开启时若一条结果都没有，顺手先跑一轮测速。 */
+    private fun toggleSort() {
+        val cfg = ConfigStore.load(this) ?: return
+        val on = !cfg.sortByLatency
+        ConfigStore.setSortByLatency(this, on)
+        rebuildCards()
+        if (!on) {
+            Toast.makeText(this, getString(R.string.sort_off), Toast.LENGTH_SHORT).show()
+            return
+        }
+        if (testResults.isEmpty() && testingKeys.isEmpty()) {
+            Toast.makeText(this, "还没有测速数据，先测一轮", Toast.LENGTH_SHORT).show()
+            testAll()
+        } else {
+            Toast.makeText(this, getString(R.string.sort_on), Toast.LENGTH_SHORT).show()
+        }
     }
 
     /** 把测试结果画到卡片右侧的徽章上；没有结果就隐藏。 */
