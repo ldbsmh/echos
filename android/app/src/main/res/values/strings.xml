@@ -58,6 +58,9 @@
     <string name="test_detail_title">连通性测试详情</string>
     <string name="test_nothing">该节点还没有测试结果，点击右侧延迟可重新测试</string>
     <string name="sort_latency">⇅ 延迟</string>
+    <string name="sort_latency_on">⇅ 延迟 ✓</string>
     <string name="sort_on">已按延迟排序：快的在上</string>
+    <string name="sort_on_stale">已按上次测速结果排序（数据较旧，建议重测）</string>
+    <string name="sort_no_data">还没有测速数据，先测一轮</string>
     <string name="sort_off">已恢复线路原有顺序</string>
 </resources>

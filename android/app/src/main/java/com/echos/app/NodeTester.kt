@@ -38,6 +38,7 @@ object NodeTester {
      * 一次测试的结果。
      * @param stage ok=完全可用 / handshake=连上了但拿不到数据 / dial=连服务端就失败
      * @param ms    端到端延迟（握手 + CONNECT + 回包），失败时为握手耗时
+     * @param at    测出这条结果的时间戳，用来判断数据是否过期
      */
     data class Result(
         val ok: Boolean,
@@ -47,7 +48,8 @@ object NodeTester {
         val rttMs: Long,
         val echMs: Long,
         val target: String,
-        val err: String
+        val err: String,
+        val at: Long = 0L
     ) {
         /** 状态一句话，给详情弹窗用。 */
         fun summary(): String = when {
@@ -76,7 +78,8 @@ object NodeTester {
         server: ConfigStore.Server,
         card: ConfigStore.EntryCard
     ): Result {
-        fun fail(msg: String) = Result(false, "dial", 0, 0, 0, 0, "", msg)
+        fun fail(msg: String) =
+            Result(false, "dial", 0, 0, 0, 0, "", msg, System.currentTimeMillis())
 
         val args = buildArgs(server, card) ?: return fail("服务地址或线路端口没填好")
         val bin = File(ctx.applicationInfo.nativeLibraryDir, "libxtun.so")
@@ -135,7 +138,8 @@ object NodeTester {
                 rttMs = o.optLong("rttMs", 0),
                 echMs = o.optLong("echMs", 0),
                 target = o.optString("target", ""),
-                err = o.optString("err", "")
+                err = o.optString("err", ""),
+                at = System.currentTimeMillis()
             )
         } catch (e: Exception) {
             fail("测试结果解析失败：${e.message}")

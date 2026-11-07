@@ -40,6 +40,9 @@ class MainActivity : AppCompatActivity() {
     private val testingKeys = mutableSetOf<String>()
     private val delayBadges = mutableMapOf<String, TextView>()
 
+    /** 测速结果对应的配置指纹；服务地址/Token 等改过后旧结果要作废。 */
+    private var resultSig: String? = null
+
     private val vpnPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             if (result.resultCode == RESULT_OK) {
@@ -94,6 +97,10 @@ class MainActivity : AppCompatActivity() {
         statusError = findViewById(R.id.statusError)
         emptyView = findViewById(R.id.emptyView)
 
+        // 上次的测速结果（含时间戳）读回来，重启后徽章和排序都在
+        testResults.putAll(TestResultStore.load(this))
+        resultSig = TestResultStore.currentSig(this)
+
         findViewById<View>(R.id.btnAddCard).setOnClickListener {
             showAddMenu()
         }
@@ -142,13 +149,27 @@ class MainActivity : AppCompatActivity() {
         cardsContainer.removeAllViews()
         delayBadges.clear() // 视图重建，旧引用作废；结果本身留着，重建后照常显示
         val cfg = ConfigStore.load(this) ?: ConfigStore.default()
+        // 服务地址 / ECH / DoH / Token 改过 → 旧结果不再有参考价值，整体作废
+        val sig = TestResultStore.currentSig(this)
+        if (resultSig != null && sig != resultSig) {
+            testResults.clear()
+            TestResultStore.save(this, testResults)
+        }
+        resultSig = sig
+        // 线路被删/被改（key 变了）后，旧结果留着只会占地方，顺手清掉
+        val liveKeys = cfg.cards.map { NodeTester.key(it) }.toSet()
+        if (testResults.keys.retainAll(liveKeys)) TestResultStore.save(this, testResults)
         val hasCards = cfg.cards.isNotEmpty()
         cardsContainer.visibility = if (hasCards) View.VISIBLE else View.GONE
         emptyView.visibility = if (hasCards) View.GONE else View.VISIBLE
         findViewById<View>(R.id.listHeader).visibility =
             if (hasCards) View.VISIBLE else View.GONE
-        // 排序开关的颜色就是开关状态本身（开=绿）
-        findViewById<TextView>(R.id.btnSort).setTextColor(
+        // 排序开关的颜色就是开关状态本身（开=绿），文字也带上状态，避免看不出来
+        val btnSort = findViewById<TextView>(R.id.btnSort)
+        btnSort.text = getString(
+            if (cfg.sortByLatency) R.string.sort_latency_on else R.string.sort_latency
+        )
+        btnSort.setTextColor(
             ContextCompat.getColor(
                 this,
                 if (cfg.sortByLatency) R.color.ech_green else R.color.ech_sub
@@ -286,6 +307,7 @@ class MainActivity : AppCompatActivity() {
         NodeTester.test(this, cfg, card) { r ->
             testingKeys.remove(key)
             testResults[key] = r
+            TestResultStore.save(this, testResults) // 落盘，重启后不用重测
             if (isFinishing || isDestroyed) return@test // 页面已销毁，只留结果不弹提示
             renderDelay(key)
             if (toast) {
@@ -325,10 +347,17 @@ class MainActivity : AppCompatActivity() {
             return
         }
         if (testResults.isEmpty() && testingKeys.isEmpty()) {
-            Toast.makeText(this, "还没有测速数据，先测一轮", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.sort_no_data), Toast.LENGTH_SHORT).show()
             testAll()
         } else {
-            Toast.makeText(this, getString(R.string.sort_on), Toast.LENGTH_SHORT).show()
+            // 结果都是从本地恢复的旧数据时，提醒一句（排序照旧生效）
+            val allStale = testResults.isNotEmpty() &&
+                testResults.values.all { TestResultStore.isStale(it) }
+            Toast.makeText(
+                this,
+                getString(if (allStale) R.string.sort_on_stale else R.string.sort_on),
+                Toast.LENGTH_SHORT
+            ).show()
         }
     }
 
@@ -347,7 +376,8 @@ class MainActivity : AppCompatActivity() {
 
             r.ok -> {
                 tv.visibility = View.VISIBLE
-                tv.text = "${r.ms} ms"
+                // 太久以前的结果加 * 提醒，避免把旧数据当现在的延迟
+                tv.text = "${r.ms} ms" + if (TestResultStore.isStale(r)) "*" else ""
                 tv.setTextColor(ContextCompat.getColor(this, latencyColor(r.ms)))
             }
 
@@ -387,6 +417,10 @@ class MainActivity : AppCompatActivity() {
                 append("数据回包：").append(r.rttMs).append(" ms\n")
                 append("测试目标：").append(r.target.ifBlank { "-" })
                 if (r.err.isNotBlank()) append("\n失败原因：").append(r.err)
+                if (r.at > 0) {
+                    append("\n测试时间：").append(agoText(r.at))
+                    if (TestResultStore.isStale(r)) append("（带 * 的是旧数据，建议重测）")
+                }
             }
         }
         androidx.appcompat.app.AlertDialog.Builder(this)
@@ -394,6 +428,17 @@ class MainActivity : AppCompatActivity() {
             .setMessage(msg)
             .setPositiveButton(android.R.string.ok, null)
             .show()
+    }
+
+    /** 相对时间文案，给测试详情用。 */
+    private fun agoText(at: Long): String {
+        val d = System.currentTimeMillis() - at
+        return when {
+            d < 60_000L -> "刚刚"
+            d < 3_600_000L -> "${d / 60_000L} 分钟前"
+            d < 86_400_000L -> "${d / 3_600_000L} 小时前"
+            else -> "${d / 86_400_000L} 天前"
+        }
     }
 
     /** 加号二级页面：手动添加节点 / 从剪贴板导入。 */
