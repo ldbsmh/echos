@@ -45,4 +45,16 @@
     <string name="cancel">取消</string>
     <string name="save">保存</string>
     <string name="delete_confirm">确定删除该节点？</string>
+
+    <!-- 连通性测试 -->
+    <string name="test_all">⚡ 全部测速</string>
+    <string name="test_latency">测试延迟</string>
+    <string name="testing">测试中…</string>
+    <string name="test_timeout">超时</string>
+    <string name="test_failed">不通</string>
+    <string name="test_half">仅握手</string>
+    <string name="test_ok_toast">%1$s 连通 %2$d ms</string>
+    <string name="test_fail_toast">%1$s：%2$s</string>
+    <string name="test_detail_title">连通性测试详情</string>
+    <string name="test_nothing">该节点还没有测试结果，点击右侧延迟可重新测试</string>
 </resources>

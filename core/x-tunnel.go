@@ -192,6 +192,12 @@ func init() {
 func main() {
 	flag.Parse()
 
+	// 连通性测试模式：不启动任何监听，把链路走一遍后打印结果退出。
+	if selfTest {
+		runSelfTest()
+		return
+	}
+
 	if listenAddr == "" && !tunMode {
 		flag.Usage()
 		return

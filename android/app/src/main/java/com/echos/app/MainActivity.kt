@@ -35,6 +35,11 @@ class MainActivity : AppCompatActivity() {
 
     private val handler = Handler(Looper.getMainLooper())
 
+    /** 每条线路的测速结果 / 正在测试状态 / 卡片上的徽章，键为 IP:端口。 */
+    private val testResults = mutableMapOf<String, NodeTester.Result>()
+    private val testingKeys = mutableSetOf<String>()
+    private val delayBadges = mutableMapOf<String, TextView>()
+
     private val vpnPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             if (result.resultCode == RESULT_OK) {
@@ -98,6 +103,7 @@ class MainActivity : AppCompatActivity() {
         findViewById<View>(R.id.btnSettings).setOnClickListener {
             startActivity(Intent(this, SettingsActivity::class.java))
         }
+        findViewById<TextView>(R.id.btnTestAll).setOnClickListener { testAll() }
 
         btnStart.setOnClickListener { onStartClicked() }
         btnStop.setOnClickListener {
@@ -130,6 +136,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun rebuildCards() {
         cardsContainer.removeAllViews()
+        delayBadges.clear() // 视图重建，旧引用作废；结果本身留着，重建后照常显示
         val cfg = ConfigStore.load(this) ?: ConfigStore.default()
         val hasCards = cfg.cards.isNotEmpty()
         cardsContainer.visibility = if (hasCards) View.VISIBLE else View.GONE
@@ -156,6 +163,7 @@ class MainActivity : AppCompatActivity() {
         val cardEndpoint = v.findViewById<TextView>(R.id.cardEndpoint)
         val activeTag = v.findViewById<TextView>(R.id.cardActive)
         val btnMenu = v.findViewById<TextView>(R.id.btnMenu)
+        val cardDelay = v.findViewById<TextView>(R.id.cardDelay)
 
         cardTitle.text = card.remark.ifBlank { card.display() }
         cardEndpoint.text = card.display()
@@ -177,13 +185,26 @@ class MainActivity : AppCompatActivity() {
 
         fun indexOfCard() = cardsContainer.indexOfChild(v)
 
+        // 延迟徽章：点一下重新测试，长按看详情
+        val key = NodeTester.key(card)
+        delayBadges[key] = cardDelay
+        renderDelay(key)
+        cardDelay.setOnClickListener { testNode(indexOfCard()) }
+        cardDelay.setOnLongClickListener {
+            showTestDetail(key)
+            true
+        }
+
         // 三点菜单：编辑 / 删除
         btnMenu.setOnClickListener { menuBtn ->
             PopupMenu(this, menuBtn).apply {
+                menu.add(getString(R.string.test_latency))
                 menu.add(getString(R.string.edit_node))
                 menu.add(getString(R.string.delete))
                 setOnMenuItemClickListener { item ->
                     when (item.title.toString()) {
+                        getString(R.string.test_latency) ->
+                            handler.postDelayed({ testNode(indexOfCard()) }, 90L)
                         getString(R.string.edit_node) ->
                             handler.postDelayed({ openNodeDialog(indexOfCard()) }, 90L)
                         getString(R.string.delete) -> {
@@ -213,6 +234,108 @@ class MainActivity : AppCompatActivity() {
         }
 
         cardsContainer.addView(v)
+    }
+
+    // ==================== 连通性测试（测延迟） ====================
+
+    /**
+     * 测一条线路。实际握手在内核子进程里做（ECH 只有 Go 侧支持），
+     * 这里只负责状态管理和界面反馈。
+     */
+    private fun testNode(index: Int, toast: Boolean = true) {
+        val cfg = ConfigStore.load(this) ?: return
+        val card = cfg.cards.getOrNull(index) ?: return
+        val key = NodeTester.key(card)
+        if (!testingKeys.add(key)) return // 同一条正在测，忽略重复点击
+        renderDelay(key)
+
+        val label = card.remark.ifBlank { card.display() }
+        NodeTester.test(this, cfg, card) { r ->
+            testingKeys.remove(key)
+            testResults[key] = r
+            if (isFinishing || isDestroyed) return@test // 页面已销毁，只留结果不弹提示
+            renderDelay(key)
+            if (toast) {
+                Toast.makeText(
+                    this,
+                    if (r.ok) getString(R.string.test_ok_toast, label, r.ms)
+                    else getString(R.string.test_fail_toast, label, r.err.ifBlank { r.summary() }),
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
+    }
+
+    /** 全部测速：逐条并发跑（NodeTester 内部限 4 并发），结果就地刷新到各卡片。 */
+    private fun testAll() {
+        val cfg = ConfigStore.load(this) ?: return
+        if (cfg.cards.isEmpty()) return
+        cfg.cards.indices.forEach { testNode(it, toast = false) }
+        Toast.makeText(this, "开始测试 ${cfg.cards.size} 条线路", Toast.LENGTH_SHORT).show()
+    }
+
+    /** 把测试结果画到卡片右侧的徽章上；没有结果就隐藏。 */
+    private fun renderDelay(key: String) {
+        val tv = delayBadges[key] ?: return
+        val r = testResults[key]
+        when {
+            key in testingKeys -> {
+                tv.visibility = View.VISIBLE
+                tv.text = getString(R.string.testing)
+                tv.setTextColor(ContextCompat.getColor(this, R.color.ech_sub))
+            }
+
+            r == null -> tv.visibility = View.GONE
+
+            r.ok -> {
+                tv.visibility = View.VISIBLE
+                tv.text = "${r.ms} ms"
+                tv.setTextColor(ContextCompat.getColor(this, latencyColor(r.ms)))
+            }
+
+            // 服务端连得上、token 也对，但数据出不去：多半是 Worker 兼容日期
+            r.stage == "handshake" -> {
+                tv.visibility = View.VISIBLE
+                tv.text = getString(R.string.test_half)
+                tv.setTextColor(ContextCompat.getColor(this, R.color.ech_yellow))
+            }
+
+            else -> {
+                tv.visibility = View.VISIBLE
+                tv.text = if (r.err.contains("超时")) getString(R.string.test_timeout)
+                else getString(R.string.test_failed)
+                tv.setTextColor(ContextCompat.getColor(this, R.color.ech_red))
+            }
+        }
+    }
+
+    /** 延迟分档：300ms 内绿、800ms 内黄、再慢橙（仍是通的，只是慢）。 */
+    private fun latencyColor(ms: Long): Int = when {
+        ms <= 300 -> R.color.ech_green
+        ms <= 800 -> R.color.ech_yellow
+        else -> R.color.ech_orange
+    }
+
+    private fun showTestDetail(key: String) {
+        val r = testResults[key]
+        val msg = if (r == null) {
+            getString(R.string.test_nothing)
+        } else {
+            buildString {
+                append("状态：").append(r.summary()).append('\n')
+                append("握手：").append(r.hsMs).append(" ms")
+                if (r.echMs > 0) append("（其中 ECH 公钥查询 ").append(r.echMs).append(" ms）")
+                append('\n')
+                append("数据回包：").append(r.rttMs).append(" ms\n")
+                append("测试目标：").append(r.target.ifBlank { "-" })
+                if (r.err.isNotBlank()) append("\n失败原因：").append(r.err)
+            }
+        }
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle(R.string.test_detail_title)
+            .setMessage(msg)
+            .setPositiveButton(android.R.string.ok, null)
+            .show()
     }
 
     /** 加号二级页面：手动添加节点 / 从剪贴板导入。 */

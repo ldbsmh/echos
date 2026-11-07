@@ -76,6 +76,22 @@
             android:textStyle="bold"
             android:visibility="gone" />
 
+        <!-- 延迟徽章：测试中… / 123 ms / 超时 -->
+        <TextView
+            android:id="@+id/cardDelay"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="4dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:clickable="true"
+            android:focusable="true"
+            android:paddingHorizontal="6dp"
+            android:paddingVertical="4dp"
+            android:textColor="@color/ech_sub"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:visibility="gone" />
+
         <!-- 右：三点菜单 -->
         <TextView
             android:id="@+id/btnMenu"

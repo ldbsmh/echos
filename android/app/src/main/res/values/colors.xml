@@ -16,6 +16,8 @@
     <color name="ech_red">#EA4335</color>           <!-- 错误/断开红 -->
     <color name="ech_error">#EA4335</color>         <!-- 状态错误小字（同红） -->
     <color name="ech_red_dim">#F5B9B5</color>       <!-- 浅红 -->
+    <color name="ech_yellow">#E8A33D</color>       <!-- 延迟中等/仅握手（黄） -->
+    <color name="ech_orange">#F2994A</color>       <!-- 延迟偏高（橙） -->
     <color name="ech_text">#ECECEF</color>          <!-- 主文字 -->
     <color name="ech_sub">#9A9AA5</color>           <!-- 次文字 -->
     <color name="ech_hint">#6A6A75</color>          <!-- 输入框 hint -->

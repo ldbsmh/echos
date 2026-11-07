@@ -20,6 +20,7 @@
 - **分应用代理** — 选择不走代理的应用（白名单 / 黑名单模式）
 - **运行日志** — 界面日志 + 落盘文件（`logs/`，可回溯上次崩溃）
 - **连通性自检** — 启动前预检服务器地址 + Token 鉴权（真实 WebSocket 升级握手），人工确认配置能用了再启动；启动时自动静默检测一次
+- **节点测延迟** — 卡片上的「⚡ 全部测速 / 测试延迟」，把 ECH 公钥 → TLS1.3 → WebSocket → CONNECT → HTTP 回包整条链路真实走一遍，按延迟分档上色（≤300ms 绿、≤800ms 黄、更慢橙、超时红），长按看分阶段耗时与失败原因
 
 ---
 
@@ -117,6 +118,32 @@ cd android && ./gradlew assembleRelease
 
 ---
 
+## 连通性测试（测延迟）怎么工作
+
+App 不会只 ping 一下 IP 就算「通」——很多情况下 TCP 能连上，但 Worker 出不去、或兼容日期没设对，网站照样打不开。所以测试是一次**真实的端到端探测**：
+
+1. **ECH 公钥查询**（DoH）—— 与正式启动同一套逻辑，耗时单独统计，不计入「延迟」
+2. **ECH + TLS1.3 握手 → WebSocket 升级**（带 `Sec-WebSocket-Protocol: <TOKEN>`），耗时记为「握手」
+3. **发 `CONNECT:www.gstatic.com:80|`**，等服务端回 `CONNECTED`（证明 Worker 能出去）
+4. **在隧道里发一个 HTTP 请求**，等首个回包字节（证明数据面真的通），耗时记为「数据回包」
+
+延迟 = 握手 + CONNECT + 回包；结果分档：**≤300ms 绿 / ≤800ms 黄 / 更慢橙**，失败按阶段报「仅握手 / 超时 / 不通」，长按延迟徽章可看分阶段耗时和具体失败原因。
+
+实现上，测试不占用 App 进程，而是以子进程方式调用内核：
+
+```bash
+# 内核自带的连通性测试模式（App 内部就是这么调的）
+libxtun.so -selftest -f wss://你的域名:443 -ip 104.16.158.132 \
+           -ech cloudflare-ech.com -dns https://dns.alidns.com/dns-query \
+           -token 你的TOKEN -test-timeout 12s
+# stdout 输出一行结果，其余日志走 stderr：
+# ECHOS-SELFTEST {"ok":true,"stage":"ok","ms":438,"hsMs":391,"rttMs":47,...}
+```
+
+> 子进程与本 App 同 UID，而 VPN 模式本来就把自己排除在 TUN 之外，所以测试走的是物理直连，不会绕进自己刚建的隧道里。
+
+---
+
 ## 项目结构
 
 ```
@@ -127,9 +154,11 @@ android/                  # Android 应用（Kotlin）
     CardEditActivity.kt   # 线路编辑
     ProxyService.kt       # 代理服务（内核进程管理）
     EchVpnService.kt      # VPN 接管
+    NodeTester.kt         # 节点连通性测试（子进程调内核 selftest）
     ConfigStore.kt        # 配置持久化（SharedPreferences + JSON）
 core/                     # Go 内核（x-tunnel）
   x-tunnel.go             # 主程序（ECH 引导 + 协议自动探测 + SOCKS5）
+  selftest.go             # 连通性测试模式（-selftest）
   go.mod
 Worker-ECH.js             # 服务端 Cloudflare Worker（部署用）
 wrangler.toml             # wrangler 部署配置
